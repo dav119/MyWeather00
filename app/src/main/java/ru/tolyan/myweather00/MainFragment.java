@@ -4,6 +4,7 @@ import android.app.Fragment;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
 
 import okhttp3.Call;
@@ -42,8 +44,7 @@ public class MainFragment extends Fragment {
 
     ArrayAdapter<String> adapter;
 
-    ArrayList<String> listForecast;
-    String forecastJASON;
+
 
     String cityId;
     SharedPreferences sp;
@@ -57,30 +58,34 @@ public class MainFragment extends Fragment {
         sp = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
         cityId = sp.getString("location", "");
 
-        getForecastData(cityId);
-        listForecast = new ArrayList<>();
-        adapter = new ArrayAdapter<String>(getActivity(), R.layout.forecast_item, R.id.textView, listForecast);
+        ;
+
+        MyTask mt = new MyTask();
+        mt.execute(cityId);
+
         setHasOptionsMenu(true);
 
 
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        sp = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
-        cityId = sp.getString("location", "");
-        Log.d(LOG_TAG, "current cityId: " + cityId);
     }
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
+        String[] data = {
+                "Mon 6/23 - Sunny - 31/17",
+                "Tue 6/24 - Foggy - 21/8",
+                "Wed 6/25 - Cloudy - 22/17",
+                "Thurs 6/26 - Rainy - 18/11",
+                "Fri 6/27 - Foggy - 21/10",
+                "Sat 6/28 - TRAPPED IN WEATHERSTATION - 23/18",
+                "Sun 6/29 - Sunny - 20/7"
+        };
+        List<String> listForecast = new ArrayList<String>(Arrays.asList(data));
+
+        adapter = new ArrayAdapter<String>(getActivity(), R.layout.forecast_item, R.id.textView, listForecast);
+
         View root = inflater.inflate(R.layout.fragment_layout, container, false);
-
-
-
 
         listView = (ListView) root.findViewById(R.id.listView);
         listView.setAdapter(adapter);
@@ -89,7 +94,7 @@ public class MainFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Intent intent = new Intent(getActivity(), DetailActivity.class);
-                intent.putExtra(Intent.EXTRA_TEXT, listForecast.get(position).toString());
+                intent.putExtra(Intent.EXTRA_TEXT, adapter.getItem(position));
                 startActivity(intent);
             }
         });
@@ -107,7 +112,10 @@ public class MainFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.refresh:
-                getForecastData(cityId);
+                sp = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
+                cityId = sp.getString("location", "");
+                MyTask mt = new MyTask();
+                mt.execute(cityId);
                 break;
             case R.id.settings:
                 Intent intent = new Intent(this.getActivity(), SettingsActivity.class);
@@ -117,60 +125,76 @@ public class MainFragment extends Fragment {
         return true;
     }
 
+    public class MyTask extends AsyncTask<String, Void, String> {
 
 
-    private void getForecastData(String cityId) {
 
-        OkHttpClient okHttpClient = new OkHttpClient();
-
-        int numDays = 7;
-
-        String units = "metric";
-        String mode = "json";
-        String appId = "4b1e84d68a329dde43f282c69bff8384";
+        @Override
+        protected String doInBackground(String... params) {
+            return getForecastData(params[0]);
+        }
 
 
-        final String CITY_PARAM = "id";
-        final String UNITS_PARAM = "units";
-        final String MODE_PARAM = "mode";
-        final String DAYS_PARAM = "cnt";
-        final String APPID_PARAM = "appid";
+        @Override
+        protected void onPostExecute(String s) {
+            adapter.clear();
+            adapter.addAll(WeatherDataParser.getDataFromJson(s));
+        }
 
-        final String FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast/daily?";
+        private String getForecastData(String cityId) {
+
+            OkHttpClient okHttpClient = new OkHttpClient();
+
+            String jsonResult = "empty";
+
+            int numDays = 7;
+
+            String units = "metric";
+            String mode = "json";
+            String appId = "4b1e84d68a329dde43f282c69bff8384";
 
 
-        Uri buildUri = Uri.parse(FORECAST_BASE_URL).buildUpon().
-                appendQueryParameter(CITY_PARAM, cityId).
-                appendQueryParameter(UNITS_PARAM, units).
-                appendQueryParameter(MODE_PARAM, mode).
-                appendQueryParameter(DAYS_PARAM, String.valueOf(numDays)).
-                appendQueryParameter(APPID_PARAM, appId).
-                build();
+            final String CITY_PARAM = "id";
+            final String UNITS_PARAM = "units";
+            final String MODE_PARAM = "mode";
+            final String DAYS_PARAM = "cnt";
+            final String APPID_PARAM = "appid";
 
-        Log.d(LOG_TAG, buildUri.toString());
-        Request request = new Request.Builder().url(buildUri.toString()).build();
+            final String FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast/daily?";
 
-        okHttpClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                e.getStackTrace();
-            }
 
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            Uri buildUri = Uri.parse(FORECAST_BASE_URL).buildUpon().
+                    appendQueryParameter(CITY_PARAM, cityId).
+                    appendQueryParameter(UNITS_PARAM, units).
+                    appendQueryParameter(MODE_PARAM, mode).
+                    appendQueryParameter(DAYS_PARAM, String.valueOf(numDays)).
+                    appendQueryParameter(APPID_PARAM, appId).
+                    build();
+
+            Log.d(LOG_TAG, buildUri.toString());
+            Request request = new Request.Builder().url(buildUri.toString()).build();
+
+            try {
+                Response response = okHttpClient.newCall(request).execute();
+
                 if (response.isSuccessful()) {
-                    forecastJASON = response.body().string();
-                    listForecast.clear();
-                    listForecast.addAll(WeatherDataParser.getDataFromJson(forecastJASON));
-
-                    Log.d(LOG_TAG, "result JASON: " + forecastJASON);
-
-
+                    jsonResult = response.body().string();
+                    Log.d(LOG_TAG, jsonResult);
                 }
-            }
-        });
+            } catch (IOException e) {
+                e.printStackTrace();
 
+            }
+
+           return jsonResult;
+
+
+        }
     }
+
+
+
+
 
 
 }

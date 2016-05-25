@@ -47,7 +47,7 @@ public class MainFragment extends Fragment {
 
     String cityId;
     SharedPreferences sp;
-
+    // added n master
     ListView listView;
 
     @Override

@@ -21,6 +21,10 @@
             android:name=".DetailActivity"
             android:parentActivityName=".MainActivity" />
         <activity android:name=".SettingsActivity"></activity>
+
+        <provider
+            android:authorities="ru.tolyan.myweather00.data"
+            android:name=".data.WeatherProvider" />
     </application>
 
 </manifest>

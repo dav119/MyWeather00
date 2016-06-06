@@ -7,4 +7,5 @@
     <string name="defaultLocation">524901</string>
     <string name="location_key">location</string>
     <string name="location_title">Location</string>
+    <string name="action_map">Location on Map</string>
 </resources>

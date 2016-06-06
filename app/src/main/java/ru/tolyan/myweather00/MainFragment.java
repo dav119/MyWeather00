@@ -18,19 +18,12 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 
-import okhttp3.Call;
-import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -45,7 +38,6 @@ public class MainFragment extends Fragment {
     ArrayAdapter<String> adapter;
 
 
-
     String cityId;
     SharedPreferences sp;
     // added n master
@@ -58,7 +50,6 @@ public class MainFragment extends Fragment {
         sp = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
         cityId = sp.getString("location", "");
 
-        ;
 
         MyTask mt = new MyTask();
         mt.execute(cityId);
@@ -67,6 +58,7 @@ public class MainFragment extends Fragment {
 
 
     }
+
 
     @Nullable
     @Override
@@ -110,6 +102,7 @@ public class MainFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        Intent intent;
         switch (item.getItemId()) {
             case R.id.refresh:
                 sp = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
@@ -118,15 +111,33 @@ public class MainFragment extends Fragment {
                 mt.execute(cityId);
                 break;
             case R.id.settings:
-                Intent intent = new Intent(this.getActivity(), SettingsActivity.class);
+                intent = new Intent(this.getActivity(), SettingsActivity.class);
                 startActivity(intent);
+                break;
+            case R.id.action_map:
+                openPrefferedLocationOnMap();
                 break;
         }
         return true;
     }
 
-    public class MyTask extends AsyncTask<String, Void, String> {
+    private void openPrefferedLocationOnMap() {
+        sp = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
+        String location = sp.getString("location", "");
 
+        Uri uri = Uri.parse("geo:0,0?").buildUpon().appendQueryParameter("q", location).build();
+
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(uri);
+
+
+
+        if (intent.resolveActivity(this.getActivity().getPackageManager()) != null) {
+            startActivity(intent);
+        }
+    }
+
+    public class MyTask extends AsyncTask<String, Void, String> {
 
 
         @Override
@@ -186,15 +197,11 @@ public class MainFragment extends Fragment {
 
             }
 
-           return jsonResult;
+            return jsonResult;
 
 
         }
     }
-
-
-
-
 
 
 }

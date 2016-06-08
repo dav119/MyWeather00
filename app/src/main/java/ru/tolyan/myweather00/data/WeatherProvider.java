@@ -47,7 +47,53 @@ public class WeatherProvider extends ContentProvider {
     @Nullable
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
-        return null;
+
+        Cursor retCursor = null;
+        switch (sUriMatcher.match(uri)) {
+            // "weather/*/*"
+            case WEATHER_WITH_LOCATION_AND_DATE:
+            {
+              //  retCursor = getWeatherByLocationSettingAndDate(uri, projection, sortOrder);
+                break;
+            }
+            // "weather/*"
+            case WEATHER_WITH_LOCATION: {
+             //   retCursor = getWeatherByLocationSetting(uri, projection, sortOrder);
+                break;
+            }
+            // "weather"
+            case WEATHER: {
+                retCursor = mWeatherDBHelper.getReadableDatabase().query(
+                        WeatherContract.WeatherEntry.TABLE_NAME,
+                        projection,
+                        selection,
+                        selectionArgs,
+                        null,
+                        null,
+                        sortOrder
+                );
+                break;
+            }
+            // "location"
+            case LOCATION: {
+                retCursor = mWeatherDBHelper.getReadableDatabase().query(
+                        WeatherContract.LocationEntry.TABLE_NAME,
+                        projection,
+                        selection,
+                        selectionArgs,
+                        null,
+                        null,
+                        sortOrder
+                );
+                break;
+            }
+
+            default:
+                throw new UnsupportedOperationException("Unknown uri: " + uri);
+        }
+        retCursor.setNotificationUri(getContext().getContentResolver(), uri);
+        return retCursor;
+
     }
 
     @Nullable

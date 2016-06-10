@@ -1,12 +1,20 @@
 package ru.tolyan.myweather00;
 
-import android.app.Fragment;
+import android.app.Application;
+
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
+
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -20,16 +28,21 @@ import android.widget.ListView;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+
+import ru.tolyan.myweather00.data.WeatherContract;
 
 /**
  * Created by Tolyan on 20.05.2016.
  */
-public class MainFragment extends Fragment {
+public class MainFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
 
     public static final String LOG_TAG = "my_log";
 
-    ArrayAdapter<String> adapter;
+    public static final int LOADER_ID_1 = 1;
 
+    ArrayAdapter<String> adapter;
+    ForecastAdapter forecastAdapter;
 
     String cityId;
     SharedPreferences sp;
@@ -40,40 +53,27 @@ public class MainFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        sp = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
-        cityId = sp.getString("location", "");
-
-
-        MyTask mt = new MyTask(this);
-        mt.execute(cityId);
-
         setHasOptionsMenu(true);
-
-
     }
 
+    @Override
+    public void onStart() {
+        MyTask mt = new MyTask(getActivity());
+        mt.execute(Utility.getPreferredLocation(getActivity()));
+
+        super.onStart();
+    }
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
-        String[] data = {
-                "Mon 6/23 - Sunny - 31/17",
-                "Tue 6/24 - Foggy - 21/8",
-                "Wed 6/25 - Cloudy - 22/17",
-                "Thurs 6/26 - Rainy - 18/11",
-                "Fri 6/27 - Foggy - 21/10",
-                "Sat 6/28 - TRAPPED IN WEATHERSTATION - 23/18",
-                "Sun 6/29 - Sunny - 20/7"
-        };
-        List<String> listForecast = new ArrayList<String>(Arrays.asList(data));
-
-        adapter = new ArrayAdapter<String>(getActivity(), R.layout.forecast_item, R.id.textView, listForecast);
+        forecastAdapter = new ForecastAdapter(getActivity(), null, 0);
 
         View root = inflater.inflate(R.layout.fragment_layout, container, false);
 
         listView = (ListView) root.findViewById(R.id.listView);
-        listView.setAdapter(adapter);
+        listView.setAdapter(forecastAdapter);
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -87,6 +87,11 @@ public class MainFragment extends Fragment {
         return root;
     }
 
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        getLoaderManager().initLoader(LOADER_ID_1, null, this);
+        super.onActivityCreated(savedInstanceState);
+    }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
@@ -100,7 +105,7 @@ public class MainFragment extends Fragment {
             case R.id.refresh:
                 sp = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
                 cityId = sp.getString("location", "");
-                MyTask mt = new MyTask(this);
+                MyTask mt = new MyTask(getActivity());
                 mt.execute(cityId);
                 break;
             case R.id.settings:
@@ -129,6 +134,30 @@ public class MainFragment extends Fragment {
             startActivity(intent);
         }
     }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        sp = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
+        String location = sp.getString("location", "");
+
+        Uri uri = WeatherContract.WeatherEntry.buildWeatherLocationWithStartDate(location, System.currentTimeMillis());
+        return new CursorLoader(this.getActivity(), uri, null, null, null, null);
+    }
+
+
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        forecastAdapter.swapCursor(data);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        forecastAdapter.swapCursor(null);
+    }
+
+
+    // Loader methods
 
 
 }
